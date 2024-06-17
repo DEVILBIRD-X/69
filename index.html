@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShotBird</title>
+    <style>
+        body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #9AFF9A;
+        }
+        .fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            background-color: #9AFF9A;
+            overflow: hidden; 
+        }
+        #gameCanvas {
+            border: 1px solid #87CEEB;
+            display: block;
+            margin: 0 auto;
+            background-color: skyblue;
+        }
+        .musicButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .youtubeButton {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #FF6600; 
+        border-radius: 5px; 
+        }
+
+        .youtubeButton button {
+        background: none;
+        border: none;
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        }
+
+        .youtubeButton img {
+        width: 50px; 
+        height: 50px; 
+        margin-right: 10px; 
+        }
+
+        .youtubeLabel {
+        color: white; 
+        font-weight: bold; 
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenButton" class="fullscreenButton">[𝗙𝗨𝗟𝗟 𝗦𝗖𝗥𝗘𝗘𝗡]</button>
+    <h1>Demon Bird Apocalypse</h1>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    <button id="musicButton1" class="musicButton">Nhạc 1</button>
+    <button id="musicButton2" class="musicButton">Nhạc 2</button>
+    <div class="youtubeButton" id="youtubeButton">
+    <button onclick="window.open('https://youtube.com/@mavuongdaccau?si=992k5TGpJhC7iYWi', '_blank')">
+    <img src="https://cdn.pixabay.com/photo/2020/11/01/04/17/youtube-5702828_1280.png">
+<span class="youtubeLabel">MY CHANNEL</span>
+    </button>
+</div>
+<audio id="backgroundMusic1" src="https://firebasestorage.googleapis.com/v0/b/nhachay-43b11.appspot.com/o/Y2meta.app%20-%20Em%20L%C3%A0%20Nh%E1%BA%A5t%20(Speed%20Up)%20-%20kis%20x%20Ho%C3%A0ng%20KayLee%20x%20Yahy%E3%80%8CCukak%20Remix%20%E3%80%8D_%20Audio%20Lyric%20(320%20kbps).mp3?alt=media&token=54c12e54-730c-4c1e-9816-bd27efdac040" preload="auto" loop></audio>
+<audio id="backgroundMusic2" src="https://firebasestorage.googleapis.com/v0/b/nhachay-43b11.appspot.com/o/Y2meta.app%20-%20Nightcore%20-%20E.T.%20_%20Take%20It%20Off%20(Switching%20Vocals)%20(320%20kbps).mp3?alt=media&token=db344bf5-14c3-4662-9619-fbf1fd441137" preload="auto" loop></audio>
+    <script>
+document.getElementById('youtubeButton').addEventListener('click', function() {
+        });
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const planeWidth = 60;
+const planeHeight = 30;
+const enemySize = 30;
+const bulletWidth = 7;
+const bulletHeight = 12;
+let planeX = canvas.width / 2 - planeWidth / 2;
+const planeY = canvas.height - planeHeight - 10;
+let enemies = [];
+let bullets = [];
+let bombs = []; 
+let score = 0;
+let lives = 5;
+let isGameOver = false;
+let isBossFight = false;
+let boss = null;
+let bossHealthIncrementCount = 0;
+let enemyInterval = 1700;
+const scoreIntervalDecrease = 300;
+const maxEnemyIntervalDecrease = 1500;       
+
+const fullscreenButton = document.getElementById('fullscreenButton');
+fullscreenButton.addEventListener('click', function() {
+    toggleFullscreen();
+});
+
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        document.body.classList.add('fullscreen'); 
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+            document.body.classList.remove('fullscreen'); 
+        }
+    }
+}
+
+const flyTulenSize = 30; 
+let flyTulens = []; 
+
+function createFlyTulen() {
+    if (Math.random() < 0.03) { 
+        const x = Math.random() * (canvas.width - flyTulenSize);
+        flyTulens.push({ x: x, y: -flyTulenSize });
+    }
+}
+
+function drawFlyTulens() {
+    flyTulens.forEach(flyTulen => {
+        ctx.fillStyle = 'orange';
+        ctx.beginPath();
+        ctx.arc(flyTulen.x + flyTulenSize / 2, flyTulen.y + flyTulenSize / 2, flyTulenSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+function updateFlyTulens() {
+    flyTulens.forEach((flyTulen, index) => {
+        flyTulen.y += 2;
+
+        if (flyTulen.y > canvas.height) {
+            flyTulens.splice(index, 1);
+        }
+
+        if (flyTulen.x < planeX + planeWidth &&
+            flyTulen.x + flyTulenSize > planeX &&
+            flyTulen.y < planeY + planeHeight &&
+            flyTulen.y + flyTulenSize > planeY) {
+            flyTulens.splice(index, 1);
+            lives--;
+            if (lives <= 0) {
+                isGameOver = true;
+            }
+        }
+    });
+}
+
+function createBomb(enemy) {
+    return {
+        x: enemy.x,
+        y: enemy.y + enemySize, 
+        dy: 2.5  
+    };
+}
+
+function updateBombs() {
+    bombs.forEach((bomb, index) => {
+        bomb.y += bomb.dy;
+
+        
+        if (bomb.y + 10 > planeY && bomb.y < planeY + planeHeight && bomb.x > planeX && bomb.x < planeX + planeWidth) {
+            bombs.splice(index, 1);
+            lives--; 
+            if (lives <= 0) {
+                isGameOver = true;
+            }
+        }
+
+        
+        if (bomb.y > canvas.height) {
+            bombs.splice(index, 1);
+        }
+    });
+}
+
+
+function drawBombs() {
+    bombs.forEach(bomb => {
+        ctx.beginPath(); 
+        ctx.arc(bomb.x, bomb.y, 5, 0, Math.PI * 2); 
+        ctx.fillStyle = 'black';
+        ctx.fill(); 
+        ctx.closePath(); 
+    });
+}
+
+        
+        function createBoss() {
+    boss = {
+        x: canvas.width / 2 - enemySize * 2,
+        y: 100,
+        width: enemySize * 4,
+        height: enemySize * 4,
+        health: 100,
+        speedX: 2,  
+        direction: 1,  
+        bullets: []
+    };
+}
+
+        
+        function drawBoss() {
+    if (boss) {
+        ctx.fillStyle = 'purple';
+        ctx.beginPath();
+        ctx.arc(boss.x + boss.width / 2, boss.y + boss.height / 2, boss.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        
+        ctx.fillStyle = 'purple';
+        for (let i = 0; i < 8; i++) {
+            ctx.save();
+            ctx.translate(boss.x + boss.width / 2, boss.y + boss.height / 2);
+            ctx.rotate(i * Math.PI / 4);
+            ctx.fillRect(-boss.width / 2, -boss.height / 2, boss.width, boss.height / 2);
+            ctx.restore();
+        }
+
+        
+        boss.bullets.forEach(bullet => {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(bullet.x, bullet.y, bulletWidth, bulletHeight);
+        });
+
+        
+        ctx.fillStyle = 'red';
+        ctx.font = '20px Arial'; 
+        ctx.fillText(`BOSS HP: ${boss.health}`, boss.x + boss.width / 2 - ctx.measureText(`BOSS HP: ${boss.health}`).width / 2, boss.y + boss.height / 2 + 10);
+    }
+}
+       
+function updateBoss() {
+    if (boss) {
+        boss.x += boss.speedX * boss.direction;
+
+        if (boss.x <= 0 || boss.x + boss.width >= canvas.width) {
+            boss.direction *= -1;
+        }
+
+        if (Math.random() < 0.02) {
+            for (let i = 0; i < 3; i++) {
+                boss.bullets.push({
+                    x: boss.x + boss.width / 2,
+                    y: boss.y + boss.height,
+                    dx: (Math.random() - 0.5) * 3,
+                    dy: 4
+                });
+            }
+        }
+
+        if (Math.random() < 0.003) {
+            const numBombs = Math.floor(Math.random() * 3) + 1;
+            const angleIncrement = (Math.PI * 2) / numBombs;
+            let currentAngle = 0;
+
+            for (let i = 0; i < numBombs; i++) {
+                bombs.push(createCircularBomb(boss, currentAngle));
+                currentAngle += angleIncrement;
+            }
+        }
+
+        if (Math.random() < 0.03) { 
+            const x = Math.random() * (canvas.width - flyTulenSize);
+            flyTulens.push({ x: x, y: -flyTulenSize });
+        }
+
+        flyTulens.forEach((flyTulen, index) => {
+            flyTulen.y += 2;
+
+            if (flyTulen.y > canvas.height) {
+                flyTulens.splice(index, 1);
+            }
+
+            if (flyTulen.x < planeX + planeWidth &&
+                flyTulen.x + flyTulenSize > planeX &&
+                flyTulen.y < planeY + planeHeight &&
+                flyTulen.y + flyTulenSize > planeY) {
+                flyTulens.splice(index, 1);
+                lives--;
+                if (lives <= 0) {
+                    isGameOver = true;
+                }
+            }
+        });
+
+        boss.bullets.forEach((bullet, index) => {
+            bullet.x += bullet.dx;
+            bullet.y += bullet.dy;
+
+            if (bullet.y > canvas.height || bullet.x < 0 || bullet.x > canvas.width) {
+                boss.bullets.splice(index, 1);
+            }
+
+            if (bullet.y + bulletHeight > planeY &&
+                bullet.y < planeY + planeHeight &&
+                bullet.x + bulletWidth > planeX &&
+                bullet.x < planeX + planeWidth) {
+                boss.bullets.splice(index, 1);
+                lives--;
+                if (lives <= 0) {
+                    isGameOver = true;
+                }
+            }
+        });
+    }
+}
+
+function createCircularBomb(boss, angle) {
+    const radius = boss.width / 2;
+    const centerX = boss.x + boss.width / 2;
+    const centerY = boss.y + boss.height / 2;
+    const speed = 1.5;
+
+    return {
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle),
+        dy: speed
+    };
+}
+
+        function checkBossCollision() {
+    bullets.forEach((bullet, bulletIndex) => {
+        if (boss && bullet.x < boss.x + boss.width &&
+            bullet.x + bulletWidth > boss.x &&
+            bullet.y < boss.y + boss.height &&
+            bullet.y + bulletHeight > boss.y) {
+            bullets.splice(bulletIndex, 1);
+            boss.health--;
+
+            if (boss.health <= 0) {
+                boss = null;
+                score += 3;  
+                lives += 2;  
+                isBossFight = false;
+            }
+        }
+    });
+}
+
+        function drawPlane() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+
+            
+            ctx.fillStyle = 'yellow';
+            ctx.fillRect(planeX, planeY + planeHeight * 0.3, planeWidth, planeHeight * 0.4);
+
+            ctx.fillStyle = 'mediumslateblue';
+            ctx.fillRect(planeX + planeWidth * 0.2, planeY + planeHeight * 0.1, planeWidth * 0.6, planeHeight * 0.2);
+
+            ctx.fillStyle = 'chartreuse';
+            ctx.beginPath();
+            ctx.moveTo(planeX + planeWidth * 0.4, planeY);
+            ctx.lineTo(planeX + planeWidth * 0.3, planeY - planeHeight * 0.2);
+            ctx.lineTo(planeX + planeWidth * 0.7, planeY - planeHeight * 0.2);
+            ctx.lineTo(planeX + planeWidth * 0.6, planeY);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = 'aquamarine';
+            ctx.beginPath();
+            ctx.moveTo(planeX + planeWidth * 0.4, planeY + planeHeight * 0.3);
+            ctx.lineTo(planeX + planeWidth * 0.6, planeY + planeHeight * 0.3);
+            ctx.lineTo(planeX + planeWidth * 0.5, planeY + planeHeight * 0.1);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = 'maroon';
+            ctx.beginPath();
+            ctx.arc(planeX + planeWidth * 0.5, planeY + planeHeight * 0.8, planeWidth * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawEnemies() {
+    enemies.forEach(enemy => {
+        ctx.fillStyle = 'darkslategray';
+        ctx.beginPath();
+        ctx.moveTo(enemy.x, enemy.y);
+        ctx.quadraticCurveTo(enemy.x - enemySize / 2, enemy.y + enemySize / 2, enemy.x, enemy.y + enemySize);
+        ctx.quadraticCurveTo(enemy.x + enemySize / 2, enemy.y + enemySize / 2, enemy.x, enemy.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(enemy.x - enemySize * 0.15, enemy.y + enemySize * 0.1, enemySize * 0.1, 0, Math.PI * 2);
+        ctx.arc(enemy.x + enemySize * 0.15, enemy.y + enemySize * 0.1, enemySize * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(enemy.x - enemySize * 0.15, enemy.y + enemySize * 0.1, enemySize * 0.05, 0, Math.PI * 2);
+        ctx.arc(enemy.x + enemySize * 0.15, enemy.y + enemySize * 0.1, enemySize * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.moveTo(enemy.x - enemySize / 2, enemy.y + enemySize / 4);
+        ctx.quadraticCurveTo(enemy.x, enemy.y - enemySize / 2, enemy.x + enemySize / 2, enemy.y + enemySize / 4);
+        ctx.closePath();
+        ctx.fill();
+            });
+        }
+
+        function drawBullets() {
+            bullets.forEach(bullet => {
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.moveTo(bullet.x, bullet.y - bulletHeight); 
+                ctx.lineTo(bullet.x - bulletWidth / 2, bullet.y); 
+                ctx.lineTo(bullet.x + bulletWidth / 2, bullet.y); 
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+
+        
+        function updateBullets() {
+            bullets.forEach((bullet, index) => {
+                bullet.y -= 5;
+                if (bullet.y < 0) {
+                    bullets.splice(index, 1);
+                }
+            });
+        }
+
+        function drawScoreAndLives() {
+            ctx.font = '20px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText(`SCORE: ${score}`, 10, 30);
+            ctx.fillText(`LIFE: ${lives}`, canvas.width - 100, 30);
+        }
+
+        function movePlane(event) {
+            const key = event.key;
+            if (key === 'ArrowLeft' && planeX > 0) {
+                planeX -= 10;
+            } else if (key === 'ArrowRight' && planeX < canvas.width - planeWidth - 10) { 
+                planeX += 10;
+            }
+        }
+
+        function movePlaneTouch(event) {
+            const touchX = event.touches[0].clientX - canvas.offsetLeft;
+            if (touchX > 0 && touchX < canvas.width) { 
+                planeX = touchX - planeWidth / 2;
+
+                
+                if (planeX < 0) {
+                    planeX = 0;
+                } else if (planeX > canvas.width - planeWidth) {
+                    planeX = canvas.width - planeWidth;
+                }
+            }
+        }
+
+        
+        function shootBullet() {
+            bullets.push({ x: planeX + planeWidth / 2, y: planeY });
+        }
+
+        
+        setInterval(shootBullet, 100);
+
+        function updateEnemies() {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        
+        enemy.y += 3; 
+                
+        enemy.x += enemy.dx; 
+
+        
+        if (enemy.x < enemySize / 2) {
+            enemy.x = enemySize / 2;
+            enemy.dx *= -1; 
+        } else if (enemy.x > canvas.width - enemySize / 2) {
+            enemy.x = canvas.width - enemySize / 2;
+            enemy.dx *= -1; 
+        }
+
+        
+        if (enemy.y > canvas.height) {
+            enemies.splice(i, 1);
+            lives--;
+            if (lives <= 0) {
+                isGameOver = true;
+            }
+            continue;
+        }
+
+        
+        if (enemy.x > planeX && enemy.x < planeX + planeWidth && enemy.y + enemySize > planeY && enemy.y < planeY + planeHeight) {
+            enemies.splice(i, 1);
+            lives--;
+            if (lives <= 0) {
+                isGameOver = true;
+            }
+            continue;
+        }
+        
+        if (!enemy.hasDroppedBomb && Math.random() < 0.01) { 
+            bombs.push(createBomb(enemy));
+            enemy.hasDroppedBomb = true;
+        }
+    }
+}
+
+        function checkCollisions() {
+    bullets.forEach((bullet, bulletIndex) => {
+        enemies.forEach((enemy, enemyIndex) => {
+            if (bullet.x > enemy.x - enemySize / 2 &&
+                bullet.x < enemy.x + enemySize / 2 &&
+                bullet.y > enemy.y - enemySize / 2 &&
+                bullet.y < enemy.y + enemySize / 2) {
+                bullets.splice(bulletIndex, 1);
+                enemies.splice(enemyIndex, 1);
+                score++;
+
+                if (score % scoreIntervalDecrease === 0 && enemyInterval > maxEnemyIntervalDecrease) {
+                    enemyInterval -= 60;
+                }
+
+                if (score % 100 === 0 && score > 0 && !isBossFight) {
+                    createBoss();
+                    isBossFight = true;
+                    if (boss) {
+                        boss.bullets = [];
+                    }
+                }
+
+                if (score >= 200 * (bossHealthIncrementCount + 1)) {
+                    if (boss) {
+                        boss.health += 10;
+                    }
+                    bossHealthIncrementCount++;
+                }
+            }
+        });
+
+        flyTulens.forEach((flyTulen, flyTulenIndex) => {
+            if (bullet.x > flyTulen.x &&
+                bullet.x < flyTulen.x + flyTulenSize &&
+                bullet.y > flyTulen.y &&
+                bullet.y < flyTulen.y + flyTulenSize) {
+                bullets.splice(bulletIndex, 1);
+                flyTulens.splice(flyTulenIndex, 1);
+                score++;
+            }
+        });
+    });
+}
+
+        const averageEnemyInterval = 1700; 
+        let lastEnemyCreationTime = 0;
+        let enemyCount = 0;
+
+        function createEnemy() {
+    if (!isBossFight && Date.now() - lastEnemyCreationTime > enemyInterval) {
+        const numEnemies = Math.floor(Math.random() * 2) + 2;
+        for (let i = 0; i < numEnemies; i++) {
+            const x = Math.random() * (canvas.width - enemySize) + enemySize / 2;
+            const dx = (Math.random() - 0.5) * 2; 
+            enemies.push({ x: x, y: -enemySize, dx: dx });
+        }
+        lastEnemyCreationTime = Date.now();
+        enemyCount += numEnemies;
+    }
+}
+
+        function updateGame() {
+    if (isGameOver) {
+        ctx.font = '30px Arial';
+        ctx.fillStyle = 'red';
+        ctx.fillText('GAME OVER', canvas.width / 2 - 80, canvas.height / 2);
+    } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawPlane();
+
+        if (isBossFight) {
+            drawBoss();
+            updateBoss();
+            checkBossCollision();
+            drawFlyTulens();
+            updateFlyTulens();
+        } else {
+            drawEnemies();
+            updateEnemies();
+            createEnemy();
+        }
+
+        updateBullets();
+        drawBullets();
+        checkCollisions();
+
+        drawBombs();
+        updateBombs();
+
+        drawScoreAndLives();
+        requestAnimationFrame(updateGame);
+    }
+}
+
+document.addEventListener('keydown', movePlane);
+canvas.addEventListener('touchstart', movePlaneTouch);
+canvas.addEventListener('touchmove', movePlaneTouch);
+        
+        updateGame();
+const backgroundMusic1 = document.getElementById('backgroundMusic1');
+const backgroundMusic2 = document.getElementById('backgroundMusic2');
+
+document.getElementById('musicButton1').addEventListener('click', function() {
+    backgroundMusic1.play();
+});
+
+document.getElementById('musicButton2').addEventListener('click', function() {
+    backgroundMusic2.play();
+});
+</script>
+</body>
+</html>
